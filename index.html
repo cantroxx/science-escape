@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지구과학 비밀 실험실 탈출</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif; margin: 0; padding: 0; }
+        body { background-color: #0f172a; color: #f8fafc; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { color: #38bdf8; font-size: 28px; margin-bottom: 5px; text-shadow: 0 0 10px rgba(56,189,248,0.3); }
+        header p { color: #94a3b8; font-size: 14px; }
+
+        /* 메인 레이아웃 분할 */
+        .game-wrapper { display: flex; gap: 20px; max-width: 1200px; width: 100%; align-items: flex-start; }
+        
+        /* 왼쪽: 20개 실험실 구역 그리드 */
+        .lab-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 2; }
+        .grid-item { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 20px 10px; text-align: center; cursor: pointer; transition: all 0.2s ease; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .grid-item:hover { border-color: #38bdf8; background: #1e293b; transform: translateY(-3px); box-shadow: 0 8px 15px rgba(56,189,248,0.15); }
+        .grid-item.visited { border-color: #475569; background: #111827; opacity: 0.7; }
+        .grid-item.visited::after { content: "✓"; position: absolute; top: 5px; right: 8px; color: #10b981; font-weight: bold; font-size: 14px; }
+        .grid-item .icon { font-size: 32px; margin-bottom: 8px; display: block; }
+        .grid-item .name { font-size: 14px; font-weight: 500; color: #cbd5e1; }
+
+        /* 오른쪽: 사이드바 (수첩 & 탈출문 기기) */
+        .sidebar { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 340px; position: sticky; top: 20px; }
+        
+        /* 학생 탐구 수첩 */
+        .notebook { background: #fffdf5; color: #1e293b; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border-left: 10px solid #eab308; }
+        .notebook h2 { font-size: 18px; color: #854d0e; margin-bottom: 12px; border-bottom: 2px dashed #ca8a04; padding-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+        .notebook-slots { display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.5; }
+        .slot { background: rgba(234, 179, 8, 0.08); border: 1px dashed #f59e0b; padding: 8px 12px; border-radius: 6px; min-height: 38px; color: #451a03; font-weight: 500; }
+        .slot.locked { color: #94a3b8; border-color: #cbd5e1; background: #f1f5f9; }
+
+        /* 탈출용 도어록 키패드 */
+        .door-lock { background: #1e293b; border: 3px solid #ef4444; border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 0 15px rgba(239,68,68,0.2); }
+        .door-lock h2 { font-size: 16px; color: #fca5a5; margin-bottom: 10px; }
+        .lock-display { width: 100%; background: #0f172a; border: 2px solid #475569; padding: 12px; font-size: 22px; font-weight: bold; color: #ef4444; letter-spacing: 6px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 200px; margin: 0 auto; }
+        .key-btn { background: #334155; border: none; color: white; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        .key-btn:hover { background: #475569; }
+        .key-btn.clear { background: #dc2626; }
+        .key-btn.enter { background: #16a34a; grid-column: span 3; margin-top: 5px; padding: 12px; }
+        .key-btn.enter:hover { background: #15803d; }
+
+        /* 모달 팝업 시스템 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(4px); }
+        .modal-overlay.active { display: flex; }
+        .modal-card { background: #1e293b; border: 2px solid #38bdf8; max-width: 480px; width: 90%; border-radius: 20px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; animation: pop 0.25s ease-out; }
+        @keyframes pop { from {transform: scale(0.9); opacity:0;} to {transform: scale(1); opacity:1;} }
+        .modal-card h3 { font-size: 20px; color: #38bdf8; margin-bottom: 12px; }
+        .modal-card p { font-size: 15px; color: #cbd5e1; line-height: 1.6; margin-bottom: 20px; }
+        
+        .quiz-options { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+        .quiz-btn { background: #334155; border: 1px solid #475569; color: #f8fafc; padding: 12px 15px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 14px; width: 100%; transition: all 0.2s; }
+        .quiz-btn:hover { background: #0284c7; border-color: #38bdf8; }
+        
+        .close-btn { background: #475569; border: none; color: white; padding: 10px 20px; font-size: 14px; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+        .close-btn:hover { background: #64748b; }
+
+        /* 성공 연출 화면 */
+        #success-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #020617; z-index: 999; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
+        #success-screen h1 { font-size: 45px; color: #10b981; margin-bottom: 15px; text-shadow: 0 0 20px rgba(16,185,129,0.4); }
+        #success-screen p { font-size: 18px; color: #94a3b8; max-width: 600px; line-height: 1.8; margin-bottom: 30px; }
+        
+        /* 틀렸을 때 연출 애니메이션 */
+        .shake { animation: shakeEffect 0.4s ease-in-out; }
+        @keyframes shakeEffect { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>지구과학 비밀 연구실 탈출</h1>
+        <p>실험실 내부의 20가지 단서들을 조사하여 수첩을 기록하고, 최종 도어록 비밀번호 4자리를 완성하세요!</p>
+    </header>
+
+    <div class="game-wrapper">
+        <!-- 메인 조사 구역 (20곳) -->
+        <div class="lab-grid" id="gridContainer"></div>
+
+        <!-- 우측 상태 패널 -->
+        <div class="sidebar">
+            <!-- 학생 탐구 수첩 -->
+            <div class="notebook">
+                <h2>📋 학생 탐구 수첩</h2>
+                <div class="notebook-slots">
+                    <div class="slot locked" id="slot-0">🔒 암호 단서 1: (실험대 A) 미해결</div>
+                    <div class="slot locked" id="slot-1">🔒 암호 단서 2: (거대 책장) 미해결</div>
+                    <div class="slot locked" id="slot-2">🔒 암호 단서 3: (의문의 상자) 미해결</div>
+                    <div class="slot locked" id="slot-3">🔒 암호 단서 4: (공룡 뼈 모형) 미해결</div>
+                    <div style="border-top: 1px dashed #cbd5e1; margin: 5px 0;"></div>
+                    <div id="general-notes" style="color: #64748b; font-style: italic;">조사한 단서와 실험실 환경 정보가 이곳에 요약 기록됩니다.</div>
+                </div>
+            </div>
+
+            <!-- 탈출용 잠금장치 -->
+            <div class="door-lock" id="doorLockArea">
+                <h2>🚨 실험실 메인 대피문</h2>
+                <div class="lock-display" id="lockDisplay">----</div>
+                <div class="keypad-grid">
+                    <button class="key-btn" onclick="pressKey('1')">1</button>
+                    <button class="key-btn" onclick="pressKey('2')">2</button>
+                    <button class="key-btn" onclick="pressKey('3')">3</button>
+                    <button class="key-btn" onclick="pressKey('4')">4</button>
+                    <button class="key-btn" onclick="pressKey('5')">5</button>
+                    <button class="key-btn" onclick="pressKey('6')">6</button>
+                    <button class="key-btn" onclick="pressKey('7')">7</button>
+                    <button class="key-btn" onclick="pressKey('8')">8</button>
+                    <button class="key-btn" onclick="pressKey('9')">9</button>
+                    <button class="key-btn clear" onclick="pressKey('C')">C</button>
+                    <button class="key-btn" onclick="pressKey('0')">0</button>
+                    <button class="key-btn enter" onclick="checkEscape()">🔓 탈출 시스템 가동</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 범용 모달 팝업 윈도우 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-card" id="modalCard">
+            <h3 id="modalTitle">장소 이름</h3>
+            <p id="modalDescription">내용 상세 정보</p>
+            <div class="quiz-options" id="modalOptions"></div>
+            <button class="close-btn" id="modalCloseBtn" onclick="closeModal()">조사 마치기</button>
+        </div>
+    </div>
+
+    <!-- 최종 탈출 성공 연출 화면 -->
+    <div id="success-screen">
+        <h1>🎉 실험실 탈출 성공! 🎉</h1>
+        <p>축하합니다! 4학년 1학기 과학 과정의 '지층과 화석', 그리고 '지진' 단원의 연관 원리들을 완벽히 파헤쳤습니다. 단서들을 조합해 도어록 해독코드 <strong>[ 3 1 2 5 ]</strong>를 정확히 찾아내어 안전구역으로 탈출하는 데 성공했습니다!</p>
+        <button class="close-btn" style="background:#10b981; padding:15px 30px; font-size:16px;" onclick="location.reload()">다시 처음부터 도전하기</button>
+    </div>
+
+<script>
+    // 20개의 정밀 상호작용 데이터셋 (퀴즈 4개, 지식 정보형 11개, 분위기 환기/꽝 5개)
+    const itemsData = [
+        { id: 1, name: "실험대 A", icon: "🧪", type: "puzzle", q: "진흙이 지층에 쌓이고 오랜 시간 단단하게 알갱이들이 굳어져 만들어진 퇴적암의 이름은 무엇일까요?", options: ["역암 (자갈 위주)", "사암 (모래 위주)", "이암 (진흙 위주)"], answer: 2, clueId: 0, clueText: "🔑 단서 1 획득: 첫 번째 비밀번호 숫자는 [ 3 ] 입니다." },
+        { id: 2, name: "정밀 현미경", icon: "🔬", type: "lore", text: "렌즈 속을 들여다보니 사암 조각이 보입니다. 거칠거칠하고 정교한 모래 알갱이들이 빽빽하게 뭉쳐 있습니다." },
+        { id: 3, name: "거대 책장", icon: "📚", type: "puzzle", q: "끊임없이 퇴적물이 퇴적되어 지층이 형성될 때, 습곡이나 뒤틀림이 없다면 가장 먼저(오래전에) 생성된 지층은 어디에 위치할까요?", options: ["가장 아래쪽 층", "가장 위쪽 층", "가운데에 낀 층"], answer: 0, clueId: 1, clueText: "🔑 단서 2 획득: 두 번째 비밀번호 숫자는 [ 1 ] 입니다." },
+        { id: 4, name: "대피 포스터", icon: "🖼️", type: "lore", text: "안전 포스터 내용: '지진으로 건물이 흔들릴 때는 탁자 밑으로 단단히 들어가 몸을 보호하고 탁자 다리를 꼭 잡으세요!'" },
+        { id: 5, name: "낡은 서랍장", icon: "🗄️", type: "empty", text: "서랍을 거칠게 열었으나 깨진 비커와 낡은 시험관 외에는 쓸모 있는 정보가 전혀 보이지 않습니다. 먼지만 풀풀 날립니다." },
+        { id: 6, name: "의문의 상자", icon: "📦", type: "puzzle", q: "자갈, 모래, 진흙 등 크고 작은 알갱이가 뒤섞여 만들어진 퇴적암으로, 알갱이 크기가 대체로 가장 굵고 불규칙한 암석은?", options: ["이암", "역암", "사암"], answer: 1, clueId: 2, clueText: "🔑 단서 3 획득: 세 번째 비밀번호 숫자는 [ 2 ] 입니다." },
+        { id: 7, name: "암석 표본함", icon: "🪨", type: "lore", text: "이암, 사암, 역암 표본이 나란히 전시되어 있습니다. 카드 쪽지에 '퇴적암은 주로 이루고 있는 알갱이의 크기에 따라 분류한다'라고 적혀 있습니다." },
+        { id: 8, name: "고사리 화분", icon: "🪴", type: "lore", text: "실험실 구석의 파릇파릇한 고사리입니다. 안내 문구에 '고사리는 온난하고 습기가 많은 육지 환경에서 무성하게 군락을 이룹니다'라고 적혀 있습니다." },
+        { id: 9, name: "공룡 뼈 모형", icon: "🦴", type: "puzzle", q: "아주 옛날에 살았던 생물의 몸체나 기어간 자국 등의 생활 흔적이 지층 속에 고스란히 남아 단단하게 굳어진 것을 무엇이라 부를까요?", options: ["지층 광물", "화석", "보석 퇴적물"], answer: 1, clueId: 3, clueText: "🔑 단서 4 획득: 네 번째 비밀번호 숫자는 [ 5 ] 입니다." },
+        { id: 10, name: "연구용 PC", icon: "🖥️", type: "lore", text: "모니터 화면에 '지층 유뮬 및 지진 강도 데이터 분석 시스템 가동 중' 이라는 푸른색 경고 박스가 깜빡이고 있습니다." },
+        { id: 11, name: "철제 쓰레기통", icon: "🗑️", type: "lore", text: "구겨진 연구원의 쪽지가 발견되었습니다: '지진은 지구 내부의 힘을 받아 땅이 순간적으로 끊어지고 어긋나면서 발생하는 강력한 흔들림이다...'" },
+        { id: 12, name: "정밀 온도계", icon: "🌡️", type: "empty", text: "현재 실험실 온도 내부 환경은 22.5°C를 기록하고 있습니다. 탈출을 못 해서 그런지 식은땀이 흐릅니다." },
+        { id: 13, name: "대형 세계지도", icon: "🗺️", type: "lore", text: "전 세계 지각 변동 지도가 그려져 있습니다. 특정 구역들이 붉은 선으로 밀집되어 연결된 형태를 보니, 지진이 자주 발생하는 지역은 따로 정해져 있는 듯합니다." },
+        { id: 14, name: "비상 생존배낭", icon: "🎒", type: "lore", text: "휴대용 라디오, 물, 손전등, 구급약이 알차게 패킹되어 있습니다. 언제 발생할지 모르는 급작스러운 지진에 완벽히 대비해 둔 모습입니다." },
+        { id: 15, name: "얼음 제조기", icon: "🧊", type: "empty", text: "차가운 사각 얼음 조각들이 한가득 쌓여 돌아가고 있습니다. 갈증을 해소하는 것 외에는 단서가 되지 않습니다." },
+        { id: 16, name: "3D 프린터", icon: "🖨️", type: "lore", text: "과거 얕고 따뜻한 바다에 살았던 생물인 '삼엽충 화석'의 복제 입체 모형을 천천히 적층하며 인쇄하고 있습니다." },
+        { id: 17, name: "휴식용 소파", icon: "🛋️", type: "empty", text: "연구원들이 밤샘 실험을 하다가 잠시 기댔을 법한 푹신한 소파입니다. 방탈출 힌트와는 아무 상관이 없어 보입니다." },
+        { id: 18, name: "세척용 싱크대", icon: "🚰", type: "empty", text: "실험 도구를 닦는 싱크대입니다. 수도꼭지에서 맑은 물이 뚝, 뚝 떨어지며 고요한 방에 소리를 냅니다." },
+        { id: 19, name: "벽면 비상등", icon: "💡", type: "lore", text: "지진이나 재난 상황으로 정전이 일어났을 때 복도를 밝혀줄 수 있는 녹색의 비상 유도등 시설입니다." },
+        { id: 20, name: "밀폐된 창문", icon: "🪟", type: "lore", text: "창문 너머는 단단한 특수 방화창 셔터로 차단되어 있습니다. 오직 우측의 '실험실 메인 대피문' 키패드 조작을 통해서만 밖으로 나갈 수 있습니다."     
+    ];
+
+    let inputPassword = "";
+    const solvedClues = [false, false, false, false];
+    const registeredNotes = new Set();
+
+    // 초기 화면 빌드 (20개 영역 생성)
+    const gridContainer = document.getElementById('gridContainer');
+    itemsData.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'grid-item';
+        div.id = `item-${item.id}`;
+        div.onclick = () => inspectItem(item.id);
+        
+        div.innerHTML = `
+            <span class="icon">${item.icon}</span>
+            <span class="name">${item.name}</span>
+        `;
+        gridContainer.appendChild(div);
+    });
+
+    // 특정 포인트 클릭/조사 시 시스템
+    function inspectItem(id) {
+        const item = itemsData.find(i => i.id === id);
+        const itemEl = document.getElementById(`item-${id}`);
+        itemEl.classList.add('visited'); // 방문 표시 변경
+
+        const overlay = document.getElementById('modalOverlay');
+        const title = document.getElementById('modalTitle');
+        const desc = document.getElementById('modalDescription');
+        const optionsContainer = document.getElementById('modalOptions');
+        const closeBtn = document.getElementById('modalCloseBtn');
+
+        title.innerText = `${item.icon} ${item.name}`;
+        optionsContainer.innerHTML = ""; // 초기화
+
+        if (item.type === 'puzzle') {
+            desc.innerText = item.q;
+            closeBtn.style.display = 'none'; // 문제를 풀기 전엔 수동 닫기 숨김
+            
+            // 문제 선지 생성
+            item.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-btn';
+                btn.innerText = opt;
+                btn.onclick = () => submitAnswer(item, idx);
+                optionsContainer.appendChild(btn);
+            });
+        } else {
+            // 정보형 및 일반 공간인 경우
+            desc.innerText = item.text;
+            closeBtn.style.display = 'inline-block';
+            
+            // 중요한 정보 획득 시 학생 수첩 하단 텍스트 자동 누적 기록
+            if (item.type === 'lore' && !registeredNotes.has(item.name)) {
+                registeredNotes.add(item.name);
+                const notesArea = document.getElementById('general-notes');
+                if (registeredNotes.size === 1) notesArea.innerHTML = ""; // 가이드 문구 초기화
+                notesArea.innerHTML += `• [${item.name}] 발견: ${item.text.substring(0, 32)}...<br>`;
+            }
+        }
+
+        overlay.classList.add('active');
+    }
+
+    // 퀴즈 정답 제출 처리 함수
+    function submitAnswer(item, chosenIdx) {
+        const card = document.getElementById('modalCard');
+        if (chosenIdx === item.answer) {
+            alert("🎯 정답입니다! 수첩에 중요한 암호 단서가 기록되었습니다.");
+            
+            // 수첩 업데이트 연동
+            solvedClues[item.clueId] = true;
+            const slotEl = document.getElementById(`slot-${item.clueId}`);
+            slotEl.innerText = item.clueText;
+            slotEl.classList.remove('locked');
+            slotEl.style.background = '#d1fae5';
+            slotEl.style.borderColor = '#10b981';
+            slotEl.style.color = '#065f46';
+            
+            closeModal();
+        } else {
+            // 오답 시 모달창 진동 효과 부여
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 400);
+            alert("❌ 앗, 분석 실패! 오답입니다. 교과 지식을 다시 생각해보세요.");
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    // 키패드 입력 제어 시스템
+    function pressKey(key) {
+        const display = document.getElementById('lockDisplay');
+        if (key === 'C') {
+            inputPassword = "";
+            display.innerText = "----";
+        } else {
+            if (inputPassword.length < 4) {
+                inputPassword += key;
+                display.innerText = inputPassword.padEnd(4, '-');
+            }
+        }
+    }
+
+    // 최종 대피 탈출 판단
+    function checkEscape() {
+        const doorArea = document.getElementById('doorLockArea');
+        
+        // 정답 패스워드: 3125
+        if (inputPassword === "3125") {
+            document.getElementById('success-screen').style.display = 'flex';
+        } else {
+            doorArea.classList.add('shake');
+            setTimeout(() => doorArea.classList.remove('shake'), 400);
+            alert("🚨 경고: 비밀번호가 일치하지 않습니다! 학생 수첩의 기록 단서들을 정렬하세요.");
+            pressKey('C'); // 리셋
+        }
+    }
+</script>
+</body>
+</html>
